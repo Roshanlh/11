@@ -1,0 +1,26 @@
+name: Auto Update
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  task:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install libs
+        run: pip install requests beautifulsoup4
+      - name: Run spider
+        run: python main.py
+      - name: Commit
+        run: |
+          git config --global user.name "bot"
+          git config --global user.email "bot@news.com"
+          git add .
+          git commit -m "auto update news"
+          git push
