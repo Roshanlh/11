@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News</title>
+    <style>
+        body{max-width:920px;margin:0 auto;padding:24px;background:#f5f5f7;font-family:-apple-system,Segoe UI;}
+        h1{font-size:30px;color:#1d1d1f;margin-bottom:8px;}
+        .tip{color:#86868b;font-size:14px;margin-bottom:30px;}
+        .item{background:#fff;border-radius:10px;padding:18px;margin-bottom:14px;border:1px solid #eaeaea;}
+        .src{font-size:12px;color:#999;margin-bottom:6px;}
+        .cn{font-size:16px;color:#222;line-height:1.7;}
+        .en{font-size:13px;color:#999;margin-top:6px;line-height:1.6;}
+        a{color:#0066cc;text-decoration:none;}
+        a:hover{text-decoration:underline;}
+    </style>
+</head>
+<body>
+    <h1>News</h1>
+    <div class="tip">全球经济外媒 · 水利政务资讯 · 每日自动更新</div>
+    <div id="container">正在加载新闻数据...</div>
+    <script>
+        fetch("news.json")
+        .then(res=>res.json())
+        .then(list=>{
+            let html=""
+            list.forEach(d=>{
+                html+=`
+                <div class="item">
+                    <div class="src">${d.s}</div>
+                    <div class="cn"><a href="${d.u}" target="_blank">${d.c}</a></div>
+                    ${d.e?`<div class="en">${d.e}</div>`:""}
+                </div>
+                `
+            })
+            document.getElementById("container").innerHTML=html
+        })
+        .catch(()=>{
+            document.getElementById("container").innerHTML = "<div style='background:#fff;padding:20px;border-radius:10px;'>首次运行，等待自动更新后显示内容...</div>"
+        })
+    </script>
+</body>
+</html>
