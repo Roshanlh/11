@@ -1,36 +1,38 @@
 name: Auto Update
 on:
+  push:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  task:
+  run:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup Python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: 安装依赖
         run: pip install requests beautifulsoup4
 
-      - name: Run spider
+      - name: 运行爬虫
         run: python main.py
 
-      - name: Commit news
+      - name: 提交更新
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "Actions-Bot"
+          git config user.email "bot@github.com"
           git add news.json
-          git commit -m "auto update news"
+          git commit -m "auto update news.json"
           git push
