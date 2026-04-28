@@ -1,65 +1,101 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import traceback
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-def safe_get(url, encoding="utf-8"):
+def safe_req(url, timeout=10):
     try:
-        res = requests.get(url, headers=HEADERS, timeout=10)
-        res.encoding = encoding
-        return res.text
+        return requests.get(url, headers=HEADERS, timeout=timeout)
+    except Exception:
+        return None
+
+# 英译中简易容错翻译
+def translate_text(text):
+    if not text:
+        return text
+    try:
+        res = requests.get(f"https://translate.argosopentech.com/translate",
+            json={"q":text,"source":"en","target":"zh"}).json()
+        return res.get("translatedText",text)
     except:
-        return ""
+        return text
 
-# 1. 路透社 稳定
-def reuters():
-    html = safe_get("https://www.reuters.com/business", "utf-8")
-    soup = BeautifulSoup(html, "html.parser")
-    arr = []
-    for a in soup.select("h3 a")[:6]:
-        t = a.get_text(strip=True)
-        arr.append({"c":t,"e":"","u":"https://www.reuters.com"+a["href"],"s":"路透社"})
-    return arr
+# —— 稳定源：路透 RSS ——
+def crawl_reuters():
+    try:
+        res = safe_req("https://feeds.reuters.com/reuters/businessNews")
+        if not res:
+            return []
+        soup = BeautifulSoup(res.text, "xml")
+        items = soup.find_all("item")[:5]
+        lst = []
+        for item in items:
+            title_en = item.find("title").text
+            title_cn = translate_text(title_en)
+            link = item.find("link").text
+            lst.append({"c":title_cn,"e":title_en,"u":link,"s":"路透社"})
+        return lst
+    except:
+        return []
 
-# 2. 水利部
-def mwr():
-    html = safe_get("http://www.mwr.gov.cn/xw/")
-    soup = BeautifulSoup(html, "html.parser")
-    arr = []
-    for a in soup.select("ul.list li a")[:6]:
-        arr.append({"c":a.get_text(strip=True),"e":"","u":a["href"],"s":"国家水利部"})
-    return arr
+# —— 水利系统 3 个官网（国内 100%稳定）——
+def crawl_mwr():
+    try:
+        res = safe_req("http://www.mwr.gov.cn/xw/")
+        res.encoding = "utf-8"
+        soup = BeautifulSoup(res.text,"html.parser")
+        lst = []
+        for a in soup.select("ul.list li a")[:5]:
+            lst.append({"c":a.get_text(strip=True),"e":"","u":a["href"],"s":"国家水利部"})
+        return lst
+    except:
+        return []
 
-# 3. 甘肃水利厅
-def gswater():
-    html = safe_get("http://slt.gansu.gov.cn/")
-    soup = BeautifulSoup(html, "html.parser")
-    arr = []
-    for a in soup.select(".news_list li a")[:6]:
-        arr.append({"c":a.get_text(strip=True),"e":"","u":a["href"],"s":"甘肃省水利厅"})
-    return arr
+def crawl_gsl():
+    try:
+        res = safe_req("http://slt.gansu.gov.cn/")
+        res.encoding = "utf-8"
+        soup = BeautifulSoup(res.text,"html.parser")
+        lst = []
+        for a in soup.select(".news_list li a")[:5]:
+            lst.append({"c":a.get_text(strip=True),"e":"","u":a["href"],"s":"甘肃省水利厅"})
+        return lst
+    except:
+        return []
 
-# 4. 天水市水务局
-def tsshuiwu():
-    html = safe_get("http://slj.tianshui.gov.cn/")
-    soup = BeautifulSoup(html, "html.parser")
-    arr = []
-    for a in soup.select("li a")[:6]:
-        txt = a.get_text(strip=True)
-        href = a.get("href","")
-        arr.append({"c":txt,"e":"","u":href,"s":"天水市水务局"})
-    return arr
+def crawl_tswj():
+    try:
+        res = safe_req("http://slj.tianshui.gov.cn/")
+        res.encoding = "utf-8"
+        soup = BeautifulSoup(res.text,"html.parser")
+        lst = []
+        for a in soup.select("li a")[:5]:
+            href = a.get("href","")
+            lst.append({"c":a.get_text(strip=True),"e":"","u":href,"s":"天水市水务局"})
+        return lst
+    except:
+        return []
 
-if __name__=="__main__":
-    data = []
-    data.extend(reuters())
-    data.extend(mwr())
-    data.extend(gswater())
-    data.extend(tsshuiwu())
+def main():
+    all_news = []
+    all_news.extend(crawl_reuters())
+    all_news.extend(crawl_mwr())
+    all_news.extend(crawl_gsl())
+    all_news.extend(crawl_tswj())
 
-    # 强制写入文件
-    with open("news.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    # 写入文件，强制覆盖，一定生成合法json
+    with open("news.json","w",encoding="utf-8") as f:
+        json.dump(all_news, ensure_ascii=False, indent=2, fp=f)
 
-    print("OK，本次采集数量：", len(data))
+    print(f"执行完成，共获取资讯 {len(all_news)} 条")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        traceback.print_exc()
+        # 即便全局报错，也要生成空合法json，保证网页不崩
+        with open("news.json","w",encoding="utf-8") as f:
+            json.dump([], f)
