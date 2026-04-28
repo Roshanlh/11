@@ -7,20 +7,22 @@ on:
 jobs:
   task:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install libs
+          python-version: "3.12"
+      - name: Install dependencies
         run: pip install requests beautifulsoup4
       - name: Run spider
         run: python main.py
-      - name: Commit
+      - name: Commit changes
         run: |
-          git config --global user.name "bot"
-          git config --global user.email "bot@news.com"
+          git config --global user.name "auto-bot"
+          git config --global user.email "bot@example.com"
           git add .
-          git commit -m "auto update news"
+          git commit -m "update news"
           git push
